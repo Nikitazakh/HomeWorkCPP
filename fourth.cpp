@@ -19,11 +19,11 @@ private:
 public:
     threadsafe_queue() //  конструктор по умолчанию
     {
-        std::cout << "ordinary";
+        std::cout << "ordinary"<<std::endl;
     }
     threadsafe_queue(const threadsafe_queue &obj) // конструктор копирования
     {
-        std::cout << "copy";
+        std::cout << "copy" <<std::endl;
         std::lock_guard <std::mutex>lk(mutex);
         data_queue =obj.data_queue;
     }
@@ -40,21 +40,28 @@ public:
         data_c.wait(lk,[this]{ return !data_queue.empty();});
         value=data_queue.front();
         data_queue.pop();
+        std::cout<<"wait and pop"<<std::endl;
     }
     std::shared_ptr<T> wait_and_pop()
     {
         std::unique_lock < std::mutex > lk(mutex);
         data_c.wait(lk,[this]{ return !data_queue.empty();});
-        std::shared_ptr <T> ptr(new T(data_queue.pop()));
+        std::shared_ptr<T> res(std::make_shared<T>(data_queue.front()));
+        data_queue.pop();
+        return res;
     }
     bool try_pop(T & value)
     {
         std::unique_lock < std::mutex > lk(mutex);
         if (data_queue.empty())
         {
-            data_queue.pop();
-        } else{
             std::cout<<"Sorry, I can't do it"<<std::endl;
+            return false;
+        } else{
+            value=data_queue.front();
+            data_queue.pop();
+            std::cout<<"try_pop"<<std::endl;
+            return true;
         }
     }
     std::shared_ptr<T>try_pop()
@@ -62,9 +69,14 @@ public:
         std::unique_lock < std::mutex > lk(mutex);
         if (data_queue.empty())
         {
-            std::shared_ptr <T> ptr(new T(data_queue.pop()));
-        } else{
             std::cout<<"Sorry, I can't do it"<<std::endl;
+            std::shared_ptr<T> res;
+            return res;
+
+        } else{
+            std::shared_ptr<T> res(std::make_shared<T>(data_queue.front()));
+            data_queue.pop();
+            return res;
         }
     }
     bool empty() const
@@ -111,8 +123,6 @@ void data_processing()
     lk.unlock();/*/
     data_v data;
     data_q.wait_and_pop(data);
-
-    data_q.try_pop(data);
 }
 
 int main(int argc, char ** argv) {
