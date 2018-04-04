@@ -1,0 +1,171 @@
+#include <ciso646>
+#include <cstdint>
+#include <cstdlib>
+
+#include <string>
+#include <vector>
+#include <memory>
+
+#include <iostream>
+
+// =============================================================================
+
+// Примечание [1] : По умолчанию объект rvalue очищается после использования в
+// перемещающем конструкторе и перемещающем операторе присваивания в clear().
+// При необходимости работы с памятью может потребоваться модификация clear().
+//
+// Примечание [2] : Реализация перемещающего конструктора используется, когда
+// вызов конструктора по умолчанию не является затратным. В противном случае
+// рекомендуется использовать приведенную реализацию со списками инициализации.
+
+// =============================================================================
+
+// Implementation::Implementation(Implementation && other) noexcept :
+//	   m_number { std::move(other.number()) },
+//	   m_string { std::move(other.string()) },
+//	   m_vector { std::move(other.vector()) }
+// {
+//	   other.clear(); // модификация
+// }
+
+// =============================================================================
+
+class user_type
+{
+private:
+    int data;
+public:
+    user_type(){}
+    user_type(int value):data(value){}
+};
+
+class Implementation
+{
+public:
+
+    using number_type = std::int32_t;
+    using string_type = user_type;
+    using vector_type = std::vector < std::int32_t >;
+
+public:
+
+    Implementation() noexcept = default;
+
+    template < typename S, typename V, typename Enable = typename std::enable_if
+            < std::is_constructible< string_type, S>::value &&
+              std::is_constructible< vector_type, V >::value >::type>
+    explicit Implementation(number_type number, S && string, V && vector) /* noexcept(true) */ :
+            m_number(number), m_string(std::forward < S > (string)),
+            m_vector(std::forward < V > (vector))
+    {}
+
+    Implementation(const Implementation &  other) :
+            Implementation(other.clone())
+    {}
+    /*/Implementation(		 Implementation && other) noexcept :
+            Implementation()
+    {
+        this->swap(other);
+    }/*/
+
+    Implementation & operator=(const Implementation &  other)
+    {
+        if (this == &other) return *this;
+        return operator=(other.clone());
+    }
+    /*/Implementation & operator=(		 Implementation && other) noexcept
+    {
+        this->swap(other);
+        other.clear();
+        return *this;
+    }/*/
+
+    ~Implementation() noexcept = default;
+
+public:
+
+    Implementation clone() const
+    {
+        return Implementation(this->m_number, this->m_string, this->m_vector);
+    }
+
+    void swap(Implementation & other) noexcept
+    {
+        using std::swap;
+
+        swap(this->m_number, other.m_number);
+        swap(this->m_string, other.m_string);
+        swap(this->m_vector, other.m_vector);
+    }
+
+    /*/void clear() noexcept
+    {
+        Implementation dummy {};
+        this->swap(dummy);
+    }/*/
+
+public:
+
+    const number_type number() const noexcept
+    {
+        return this->m_number;
+    }
+    const string_type & string() const noexcept
+    {
+        return this->m_string;
+    }
+    const vector_type & vector() const noexcept
+    {
+        return this->m_vector;
+    }
+
+private:
+
+    number_type	m_number;
+    string_type m_string;
+    vector_type m_vector;
+};
+
+// =============================================================================
+
+inline void swap(Implementation & lhs, Implementation & rhs) noexcept
+{
+    lhs.swap(rhs);
+}
+
+// =============================================================================
+
+/*/int run(int argc, char ** argv)
+{
+    Implementation implementation_1{ 5678, 1, std::initializer_list<int>{ 5,6,7,8 } };
+    //Implementation implementation_2{ 1234, 2, std::vector < int > (4, 0) };
+
+    //Implementation implementation_1 { implementation_2 };
+    //Implementation implementation_1 { std::move(implementation_2) };
+    //implementation_1 = implementation_2;
+    //implementation_1 = std::move(implementation_2);
+
+    //swap(implementation_1, implementation_2);
+
+    //implementation_2.clear();
+
+    //std::cout << implementation_1.number() << " - "
+    //	<< implementation_1.string() << " - "
+    //	<< implementation_1.vector().size() << std::endl;
+
+    //std::cout << implementation_2.number() << " - "
+    //	<< implementation_2.string() << " - "
+    //	<< implementation_2.vector().size() << std::endl;
+
+    return EXIT_SUCCESS;
+}/*/
+
+// =============================================================================
+
+int main(int argc, char ** argv)
+{
+    //run(argc, argv) ? exit(EXIT_FAILURE) : exit(EXIT_SUCCESS);
+    Implementation implementation_1{ 5678, 1, std::initializer_list<int>{ 5,6,7,8 } };
+}
+
+// =============================================================================
